@@ -62,7 +62,6 @@
       <div class="pill streak"><span class="lbl">Streak</span><span id="streak" class="accent">0</span></div>
       <div class="controls">
         <button class="btn" id="btnRestart" title="Restart with a new layout">Restart</button>
-        <button class="btn" id="btnGuide" title="Toggle aiming guide">Guide: On</button>
         <button class="btn" id="btnOptions" title="Toggle options">Options</button>
       </div>
     </div>
@@ -148,7 +147,6 @@
       let score = 0;
       let streak = 0;
       let targetsLeft = 0;
-      let showGuide = true;
       const opts = { guideBounces: 1 };
       let state = 'aim'; // 'aim' | 'fly' | 'win' | 'lose'
       let accumulator = 0; let lastT = performance.now();
@@ -159,7 +157,7 @@
       const hudTargets = document.getElementById('targets');
       const hudStreak = document.getElementById('streak');
       const btnRestart = document.getElementById('btnRestart');
-      const btnGuide = document.getElementById('btnGuide');
+      
       const btnOptions = document.getElementById('btnOptions');
       const optionsPanel = document.getElementById('optionsPanel');
       const segBounces = document.getElementById('segBounces');
@@ -192,7 +190,6 @@
         ball.pos.set(world.w*0.5, 80); ball.vel.set(0,0); ball.alive=false;
         ballsLeft = 5; score = 0; streak = 0; state='aim';
         updateHUD();
-        setGuideButton();
       }
 
       function updateHUD() {
@@ -202,7 +199,7 @@
         hudStreak.textContent = String(streak);
       }
 
-      function setGuideButton() { btnGuide.textContent = 'Guide: ' + (showGuide ? 'On' : 'Off'); }
+      
 
       // -------- Input & Aiming --------
       const pointer = { x: world.w*0.5, y: 200, down:false };
@@ -220,12 +217,19 @@
         if (e.code === 'Space') { shoot(); }
       });
       btnRestart.addEventListener('click', () => { resetLevel((Math.random()*0xffffffff)>>>0); });
-      btnGuide.addEventListener('click', () => { showGuide = !showGuide; setGuideButton(); });
       btnOptions.addEventListener('click', () => { optionsPanel.hidden = !optionsPanel.hidden; });
       segBounces.addEventListener('click', (e) => {
         const b = e.target.closest('button'); if (!b) return;
-        opts.guideBounces = parseInt(b.dataset.v, 10);
-        Array.from(segBounces.children).forEach(ch => ch.classList.toggle('active', ch === b));
+        const val = parseInt(b.dataset.v, 10);
+        const isActive = b.classList.contains('active');
+        // Toggle off if clicking the active one
+        if (isActive) {
+          opts.guideBounces = 0;
+          Array.from(segBounces.children).forEach(ch => ch.classList.remove('active'));
+        } else {
+          opts.guideBounces = val;
+          Array.from(segBounces.children).forEach(ch => ch.classList.toggle('active', ch === b));
+        }
       });
 
       function shoot() {
@@ -342,7 +346,7 @@
 
       // -------- Guide Prediction (replicates fixed-step + substeps) --------
       function computeGuide() {
-        if (!showGuide || state !== 'aim') return null;
+        if (opts.guideBounces <= 0 || state !== 'aim') return null;
         const start = ball.pos.clone();
         const dir = Math.atan2(pointer.y - start.y, pointer.x - start.x);
         const pos = start.clone();

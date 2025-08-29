@@ -18,11 +18,10 @@ A polished, single‑file Peggle‑style game you can open directly in any moder
 - Shoot: mouse click or `Space`
 - HUD buttons:
   - `Restart`: new seed/layout
-  - `Guide`: toggle aiming guide on/off
   - `Options`: open the Options panel
 
 ## Options Panel
-- `Guide bounces`: choose 1, 2, or 3. The guide simulates up to that many peg hits. The breadcrumb fades and becomes barely visible near the final predicted peg.
+- `Guide bounces`: choose 1, 2, or 3. The guide simulates up to that many peg hits. Click the active number again to turn the guide off (no selection). The breadcrumb fades and becomes barely visible near the final predicted peg.
 
 ## Notes
 - The guide uses the same integration order, wall handling, restitution, and substep logic as gameplay for high fidelity.
