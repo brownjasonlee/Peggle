@@ -37,10 +37,12 @@
       .btn:hover { background: rgba(255,255,255,0.14); }
       .btn:active { transform: translateY(1px); }
       .options {
-        position: fixed; top: 64px; right: 16px; padding: 14px 16px; border-radius: 12px;
+        position: fixed; top: 64px; right: 16px; bottom: 16px; padding: 14px 16px; border-radius: 12px;
         background: rgba(10,16,30,0.6); border: 1px solid rgba(255,255,255,0.1);
         box-shadow: 0 12px 36px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
         backdrop-filter: blur(8px); color: #e8eefc; font-size: 14px;
+        overflow: auto; overscroll-behavior: contain;
+        max-width: min(92vw, 460px);
       }
       .options h3 { margin: 0 0 8px; font-size: 14px; font-weight: 800; letter-spacing: 0.3px; opacity: 0.9; }
       .opt-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
