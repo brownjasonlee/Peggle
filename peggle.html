@@ -48,6 +48,7 @@
       .seg { display: inline-flex; gap: 6px; }
       .seg button { cursor: pointer; padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.06); color: #e8eefc; }
       .seg button.active { background: rgba(166,209,255,0.18); border-color: rgba(166,209,255,0.5); }
+      .seg.disabled { opacity: 0.4; pointer-events: none; }
       /* overlay removed */
       .footer { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); font-size: 12px; opacity: 0.6; }
       a { color: #a6d1ff; text-decoration: none; border-bottom: 1px dotted rgba(166,209,255,0.5); }
@@ -68,11 +69,17 @@
     <div class="options" id="optionsPanel" hidden>
       <h3>Options</h3>
       <div class="opt-row">
+        <div class="opt-label">Guide</div>
+        <div class="seg" id="segGuideOn">
+          <button data-on="0">Off</button>
+          <button data-on="1" class="active">On</button>
+        </div>
+      </div>
+      <div class="opt-row">
         <div class="opt-label">Guide bounces</div>
         <div class="seg" id="segBounces">
-          <button data-v="1" class="active">1</button>
+          <button data-v="1">1</button>
           <button data-v="2">2</button>
-          <button data-v="3">3</button>
         </div>
       </div>
       <div class="opt-row" style="opacity:.7">More settings coming next…</div>
@@ -147,7 +154,7 @@
       let score = 0;
       let streak = 0;
       let targetsLeft = 0;
-      const opts = { guideBounces: 1 };
+      const opts = { guideOn: true, guideBounces: 0 };
       let state = 'aim'; // 'aim' | 'fly' | 'win' | 'lose'
       let accumulator = 0; let lastT = performance.now();
 
@@ -160,6 +167,7 @@
       
       const btnOptions = document.getElementById('btnOptions');
       const optionsPanel = document.getElementById('optionsPanel');
+      const segGuideOn = document.getElementById('segGuideOn');
       const segBounces = document.getElementById('segBounces');
       
 
@@ -190,6 +198,8 @@
         ball.pos.set(world.w*0.5, 80); ball.vel.set(0,0); ball.alive=false;
         ballsLeft = 5; score = 0; streak = 0; state='aim';
         updateHUD();
+        // Initialize options UI state
+        updateBouncesEnabled();
       }
 
       function updateHUD() {
@@ -218,6 +228,21 @@
       });
       btnRestart.addEventListener('click', () => { resetLevel((Math.random()*0xffffffff)>>>0); });
       btnOptions.addEventListener('click', () => { optionsPanel.hidden = !optionsPanel.hidden; });
+      function updateBouncesEnabled() {
+        segBounces.classList.toggle('disabled', !opts.guideOn);
+      }
+      segGuideOn.addEventListener('click', (e) => {
+        const b = e.target.closest('button'); if (!b) return;
+        const on = b.dataset.on === '1';
+        opts.guideOn = on;
+        Array.from(segGuideOn.children).forEach(ch => ch.classList.toggle('active', ch === b));
+        if (!opts.guideOn) {
+          // when off, also clear bounce selection
+          opts.guideBounces = 0;
+          Array.from(segBounces.children).forEach(ch => ch.classList.remove('active'));
+        }
+        updateBouncesEnabled();
+      });
       segBounces.addEventListener('click', (e) => {
         const b = e.target.closest('button'); if (!b) return;
         const val = parseInt(b.dataset.v, 10);
@@ -346,7 +371,7 @@
 
       // -------- Guide Prediction (replicates fixed-step + substeps) --------
       function computeGuide() {
-        if (opts.guideBounces <= 0 || state !== 'aim') return null;
+        if (!opts.guideOn || state !== 'aim') return null;
         const start = ball.pos.clone();
         const dir = Math.atan2(pointer.y - start.y, pointer.x - start.x);
         const pos = start.clone();
@@ -354,10 +379,11 @@
         const maxMs = 2000;
         let elapsed = 0;
         const pts = [pos.clone()];
-        let bounces = 0;
+        let pegContacts = 0;
         let finalHit = null;
         // Simulate using the same integration and collision order as runtime
-        while (elapsed < maxMs && bounces < opts.guideBounces) {
+        const maxContacts = 1 + (opts.guideBounces|0);
+        outer: while (elapsed < maxMs && pegContacts < maxContacts) {
           const speed = vel.len();
           const sub = Math.min(4, 1 + ((speed > 800) ? 2 : 0));
           const sdt = DT / sub; // ms
@@ -374,7 +400,6 @@
             if (pos.y < BALL_R) { pos.y = BALL_R; vel.y = Math.abs(vel.y)*WALL_REST; }
 
             // pegs
-            let collided = false;
             for (let i=pegs.length-1;i>=0;i--) {
               const p = pegs[i]; if (p.hit) continue;
               const col = circleCollide(pos.x, pos.y, BALL_R, p.x, p.y, p.r);
@@ -384,14 +409,14 @@
               pos.y += col.ny * col.pen;
               const rv = reflectVelocity(vel.x, vel.y, col.nx, col.ny, (BALL_REST+PEG_REST)*0.5);
               vel.set(rv[0], rv[1]);
-              bounces++;
+              pegContacts++;
               finalHit = { x: pos.x, y: pos.y };
-              collided = true;
+              pts.push(pos.clone());
+              if (pegContacts >= maxContacts) break outer;
               break;
             }
 
             pts.push(pos.clone());
-            if (bounces >= opts.guideBounces) break;
             if (pos.y > world.h + BALL_R + 40) break;
           }
           elapsed += DT;

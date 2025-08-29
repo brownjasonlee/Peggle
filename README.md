@@ -21,7 +21,13 @@ A polished, single‑file Peggle‑style game you can open directly in any moder
   - `Options`: open the Options panel
 
 ## Options Panel
-- `Guide bounces`: choose 1, 2, or 3. The guide simulates up to that many peg hits. Click the active number again to turn the guide off (no selection). The breadcrumb fades and becomes barely visible near the final predicted peg.
+- `Guide` On/Off: turns the aiming guide on or off. When Off, bounce numbers are disabled.
+- `Guide bounces`: choose 1 or 2. The preview ends at the N+1th peg contact:
+  - No number selected: ends at first peg
+  - `1`: ends at second peg (one bounce)
+  - `2`: ends at third peg (two bounces)
+  - Click the active number again to clear it.
+  The breadcrumb fades and becomes barely visible near the final predicted peg.
 
 ## Notes
 - The guide uses the same integration order, wall handling, restitution, and substep logic as gameplay for high fidelity.
