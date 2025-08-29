@@ -450,6 +450,55 @@
       const segColorBlind = document.getElementById('segColorBlind');
       const selPreset = document.getElementById('selPreset');
 
+      // Tooltips for settings
+      selPreset.title = 'Choose a preset configuration';
+      segGuideOn.title = 'Toggle the aiming guide visualization';
+      segBounces.title = 'How many predicted bounces to show in the guide';
+      slGuideMs.title = 'Maximum simulated time for the guide (ms)';
+      slGuideDensity.title = 'Breadcrumb spacing for the guide (higher = denser)';
+      slGuideFadeStart.title = 'Starting opacity of guide breadcrumbs';
+      slGuideFadeEnd.title = 'Ending opacity of guide breadcrumbs';
+
+      slGravity.title = 'Downward acceleration (higher = faster fall)';
+      slRestBall.title = 'Ball bounciness on impact';
+      slRestPeg.title = 'Peg bounciness on impact';
+      slRestWall.title = 'Wall bounciness on impact';
+      slDrag.title = 'Air resistance per tick (closer to 1 = less drag)';
+      selHz.title = 'Physics steps per second (higher = smoother, more CPU)';
+
+      slLaunch.title = 'Initial speed when firing the ball';
+      slBallR.title = 'Ball radius in pixels';
+      slBalls.title = 'Number of balls for the current game';
+
+      slBucketSpeed.title = 'Horizontal movement speed of the bucket';
+      numBucketW.title = 'Bucket opening width in pixels';
+      numBucketH.title = 'Bucket height in pixels';
+
+      numCols.title = 'Number of peg columns in the grid';
+      numRows.title = 'Number of peg rows in the grid';
+      numSpacing.title = 'Horizontal spacing between peg columns';
+      numPegR.title = 'Peg radius in pixels';
+      numStartY.title = 'Vertical start position for the first peg row';
+      slTargetRatio.title = 'Fraction of pegs that are orange targets';
+      txtSeed.title = 'Hex seed for deterministic level generation';
+      btnSeed.title = 'Regenerate layout using the given seed';
+
+      slScoreNormal.title = 'Score awarded for hitting a normal (blue) peg';
+      slScoreTarget.title = 'Score awarded for hitting a target (orange) peg';
+      slStreakStep.title = 'Per-hit multiplier step added to streak bonus';
+      selCatchBonus.title = 'Reward when the ball lands in the bucket';
+
+      slPartDensity.title = 'Particle effect density multiplier';
+      numPartSpMin.title = 'Minimum particle speed on emission';
+      numPartSpMax.title = 'Maximum particle speed on emission';
+      numPartLifeMin.title = 'Minimum particle lifetime (ms)';
+      numPartLifeMax.title = 'Maximum particle lifetime (ms)';
+      slPartGrav.title = 'Particle gravity factor relative to ball gravity';
+
+      slTrail.title = 'Number of trail dots drawn behind the ball';
+      selDpr.title = 'Maximum device pixel ratio (performance cap)';
+      segColorBlind.title = 'Use a color-blind friendly palette';
+
       function syncOptionsUI() {
         slGravity.value = String(opts.gravity);
         lblGravity.textContent = String(opts.gravity);
