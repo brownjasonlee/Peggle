@@ -23,10 +23,14 @@
         box-shadow: 0 6px 24px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.06);
         pointer-events: auto; user-select: none;
         font-weight: 600; letter-spacing: 0.2px; font-size: 14px;
+        font-variant-numeric: tabular-nums; font-feature-settings: 'tnum';
       }
       .hud .pill { padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,0.06); }
-      .hud .accent { color: #8ec7ff; }
-      .hud .msg { color: #b1c7ff; }
+      .hud .accent { color: #8ec7ff; display: inline-block; text-align: right; }
+      .pill.score .accent { width: 8ch; }
+      .pill.balls .accent { width: 2ch; }
+      .pill.targets .accent { width: 3ch; }
+      .pill.streak .accent { width: 3ch; }
       .controls { display: flex; gap: 8px; }
       .btn { cursor: pointer; padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.08); color: #e8eefc; font-weight: 700; letter-spacing: 0.2px; }
       .btn:hover { background: rgba(255,255,255,0.14); }
@@ -39,11 +43,10 @@
   <body>
     <div id="wrap"><canvas id="game"></canvas></div>
     <div class="hud" id="hud">
-      <div class="pill">Score: <span id="score" class="accent">0</span></div>
-      <div class="pill">Balls: <span id="balls" class="accent">5</span></div>
-      <div class="pill">Targets: <span id="targets" class="accent">0</span></div>
-      <div class="pill">Streak: <span id="streak" class="accent">0</span></div>
-      <div class="pill msg" id="hudMsg"></div>
+      <div class="pill score">Score: <span id="score" class="accent">0</span></div>
+      <div class="pill balls">Balls: <span id="balls" class="accent">5</span></div>
+      <div class="pill targets">Targets: <span id="targets" class="accent">0</span></div>
+      <div class="pill streak">Streak: <span id="streak" class="accent">0</span></div>
       <div class="controls">
         <button class="btn" id="btnRestart" title="Restart with a new layout">Restart</button>
         <button class="btn" id="btnGuide" title="Toggle aiming guide">Guide: On</button>
@@ -128,21 +131,9 @@
       const hudBalls = document.getElementById('balls');
       const hudTargets = document.getElementById('targets');
       const hudStreak = document.getElementById('streak');
-      const hudMsg = document.getElementById('hudMsg');
       const btnRestart = document.getElementById('btnRestart');
       const btnGuide = document.getElementById('btnGuide');
-      let msgTimer = null;
-
-      function showMessage(text, ms) {
-        hudMsg.textContent = text || '';
-        hudMsg.style.display = text ? 'inline-block' : 'none';
-        if (msgTimer) { clearTimeout(msgTimer); msgTimer = null; }
-        if (text && ms && ms > 0) {
-          msgTimer = setTimeout(() => {
-            if (state === 'aim' || state === 'fly') { hudMsg.textContent = ''; hudMsg.style.display = 'none'; }
-          }, ms);
-        }
-      }
+      
 
       function resetLevel(seed = 0x1234cafe) {
         rng.s = seed >>> 0;
@@ -172,7 +163,6 @@
         ballsLeft = 5; score = 0; streak = 0; state='aim';
         updateHUD();
         setGuideButton();
-        showMessage('Aim with mouse, click or space to shoot.', 1400);
       }
 
       function updateHUD() {
@@ -200,7 +190,7 @@
         if (e.code === 'Space') { shoot(); }
       });
       btnRestart.addEventListener('click', () => { resetLevel((Math.random()*0xffffffff)>>>0); });
-      btnGuide.addEventListener('click', () => { showGuide = !showGuide; setGuideButton(); showMessage('Guide ' + (showGuide ? 'On' : 'Off'), 700); });
+      btnGuide.addEventListener('click', () => { showGuide = !showGuide; setGuideButton(); });
 
       function shoot() {
         if (state !== 'aim' || ballsLeft <= 0) return;
@@ -208,8 +198,7 @@
         const speed = LAUNCH_SPEED;
         ball.vel.set(Math.cos(dir)*speed, Math.sin(dir)*speed);
         ball.alive = true; state = 'fly'; streak = 0; trail.length = 0;
-        // clear any hint message after shooting
-        showMessage('', 0);
+        // no HUD messages
       }
 
       canvas.addEventListener('click', shoot);
@@ -279,7 +268,7 @@
             ballsLeft++; updateHUD();
             ball.alive = false; state = (targetsLeft<=0) ? 'win' : 'aim';
             ball.pos.set(world.w*0.5, 80); ball.vel.set(0,0); trail.length=0; streak=0;
-            showMessage('Catch! +1 Ball', 700);
+            // no HUD messages
             return;
           }
 
@@ -308,9 +297,9 @@
         if (ball.pos.y > world.h + BALL_R) {
           ballsLeft--; updateHUD();
           ball.alive = false; trail.length=0; streak=0;
-          if (targetsLeft<=0) { state='win'; showMessage('Level Complete! Click Restart for a new layout'); }
-          else if (ballsLeft>0) { state='aim'; showMessage('Miss! Aim and shoot again.', 900); }
-          else { state='lose'; showMessage('Out of Balls — Click Restart to try again'); }
+          if (targetsLeft<=0) { state='win'; }
+          else if (ballsLeft>0) { state='aim'; }
+          else { state='lose'; }
           ball.pos.set(world.w*0.5, 80); ball.vel.set(0,0);
         }
       }
