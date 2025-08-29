@@ -328,49 +328,49 @@
       let MAX_TRAIL = opts.trailLength;
       const MAX_CATCH_UP = 2; // max physics steps per frame
       const presets = [
-        { name:'Classic Balanced', gravity:1200, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:780, ballRadius:9, balls:5,
+        { name:'Classic Balanced', desc:'Default feel: 5 balls, moderate gravity, 1-bounce guide.', gravity:1200, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:780, ballRadius:9, balls:5,
           bucket:{w:120,h:20,speed:220}, grid:{cols:12,rows:7,spacing:62,r:12,startY:150,targetRatio:0.22}, guide:{bounces:1, ms:2000, density:4},
           scoring:{normal:50,target:150,streakStep:0.12,catchBonus:'ball'}, particles:{scale:1} },
-        { name:'Beginner Friendly', gravity:1000, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:780, ballRadius:9, balls:8,
+        { name:'Beginner Friendly', desc:'Easier run: 8 balls, larger bucket, more targets, 3-bounce guide.', gravity:1000, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:780, ballRadius:9, balls:8,
           bucket:{w:140,h:24,speed:200}, grid:{cols:12,rows:7,spacing:62,r:12,startY:150,targetRatio:0.30}, guide:{bounces:3, ms:2000, density:4},
           scoring:{normal:50,target:150,streakStep:0.12,catchBonus:'ball'}, particles:{scale:1} },
-        { name:'Skill Shot', gravity:1400, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:760, ballRadius:9, balls:5,
+        { name:'Skill Shot', desc:'Harder: high gravity, smaller bucket, fewer targets, no guide bounces.', gravity:1400, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:760, ballRadius:9, balls:5,
           bucket:{w:110,h:18,speed:240}, grid:{cols:12,rows:7,spacing:62,r:12,startY:150,targetRatio:0.18}, guide:{bounces:0, ms:2000, density:4},
           scoring:{normal:50,target:150,streakStep:0.12,catchBonus:'ball'}, particles:{scale:1} },
-        { name:'Zen Chill', gravity:900, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:780, ballRadius:9, balls:7,
+        { name:'Zen Chill', desc:'Relaxed: lower gravity, slower bucket, extra-long aim guide.', gravity:900, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:780, ballRadius:9, balls:7,
           bucket:{w:120,h:20,speed:180}, grid:{cols:12,rows:7,spacing:62,r:12,startY:150,targetRatio:0.22}, guide:{bounces:1, ms:3000, density:4},
           scoring:{normal:50,target:150,streakStep:0.12,catchBonus:'ball'}, particles:{scale:0.5} },
-        { name:'Pinball Chaos', gravity:1300, restitution:{ball:0.99,peg:0.99,wall:0.99}, launchSpeed:780, ballRadius:9, balls:5,
+        { name:'Pinball Chaos', desc:'Wild bounces: near-elastic collisions for hectic ricochets.', gravity:1300, restitution:{ball:0.99,peg:0.99,wall:0.99}, launchSpeed:780, ballRadius:9, balls:5,
           bucket:{w:120,h:20,speed:260}, grid:{cols:12,rows:7,spacing:62,r:12,startY:150,targetRatio:0.22}, guide:{bounces:2, ms:2000, density:4},
           scoring:{normal:50,target:150,streakStep:0.12,catchBonus:'ball'}, particles:{scale:2} },
-        { name:'Moon Walk', gravity:650, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:900, ballRadius:9, balls:5,
+        { name:'Moon Walk', desc:'Low gravity with faster launch speed; floaty arcs, 3-bounce guide.', gravity:650, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:900, ballRadius:9, balls:5,
           bucket:{w:120,h:20,speed:180}, grid:{cols:12,rows:7,spacing:62,r:12,startY:150,targetRatio:0.22}, guide:{bounces:3, ms:2000, density:4},
           scoring:{normal:50,target:150,streakStep:0.12,catchBonus:'ball'}, particles:{scale:1} },
-        { name:'Speedrunner', gravity:1200, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:780, ballRadius:9, balls:3,
+        { name:'Speedrunner', desc:'Fast and lean: 3 balls, quick bucket, minimal targets.', gravity:1200, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:780, ballRadius:9, balls:3,
           bucket:{w:120,h:20,speed:280}, grid:{cols:12,rows:7,spacing:62,r:12,startY:150,targetRatio:0.25}, guide:{bounces:0, ms:2000, density:4},
           scoring:{normal:50,target:150,streakStep:0.12,catchBonus:'ball'}, particles:{scale:1} },
-        { name:'Pachinko Flood', gravity:1200, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:780, ballRadius:9, balls:5,
+        { name:'Pachinko Flood', desc:'Dense grid: more rows and columns, slightly smaller pegs.', gravity:1200, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:780, ballRadius:9, balls:5,
           bucket:{w:120,h:20,speed:220}, grid:{cols:14,rows:9,spacing:54,r:11,startY:150,targetRatio:0.20}, guide:{bounces:1, ms:2000, density:4},
           scoring:{normal:50,target:150,streakStep:0.12,catchBonus:'ball'}, particles:{scale:1} },
-        { name:'Tiny Ball, Tiny Bucket', gravity:1200, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:780, ballRadius:7, balls:5,
+        { name:'Tiny Ball, Tiny Bucket', desc:'Precision mode: smaller ball and bucket; tighter gaps.', gravity:1200, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:780, ballRadius:7, balls:5,
           bucket:{w:100,h:18,speed:230}, grid:{cols:12,rows:7,spacing:62,r:12,startY:150,targetRatio:0.22}, guide:{bounces:2, ms:2000, density:4},
           scoring:{normal:50,target:150,streakStep:0.12,catchBonus:'ball'}, particles:{scale:1} },
-        { name:'Jumbo Party', gravity:1200, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:780, ballRadius:12, balls:5,
+        { name:'Jumbo Party', desc:'Chunky fun: bigger ball and bucket; forgiving ricochets.', gravity:1200, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:780, ballRadius:12, balls:5,
           bucket:{w:140,h:24,speed:220}, grid:{cols:12,rows:7,spacing:68,r:14,startY:150,targetRatio:0.22}, guide:{bounces:1, ms:2000, density:4},
           scoring:{normal:50,target:150,streakStep:0.20,catchBonus:'ball'}, particles:{scale:2} },
-        { name:'Gremlin Mode', gravity:1200, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:780, ballRadius:9, balls:5,
+        { name:'Gremlin Mode', desc:'Mischief enabled: unexpected antics for chaotic runs.', gravity:1200, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:780, ballRadius:9, balls:5,
           bucket:{w:120,h:20,speed:220}, grid:{cols:12,rows:7,spacing:62,r:12,startY:150,targetRatio:0.22}, guide:{bounces:1, ms:2000, density:4},
           scoring:{normal:50,target:150,streakStep:0.12,catchBonus:'ball'}, particles:{scale:1}, fun:{gremlin:true} },
-        { name:'Billionaire Mode', gravity:1200, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:780, ballRadius:9, balls:5,
+        { name:'Billionaire Mode', desc:'Make it rain: huge points, more targets, catch gives points.', gravity:1200, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:780, ballRadius:9, balls:5,
           bucket:{w:120,h:20,speed:220}, grid:{cols:12,rows:7,spacing:62,r:12,startY:150,targetRatio:0.35}, guide:{bounces:1, ms:2000, density:4},
           scoring:{normal:500,target:1500,streakStep:0.24,catchBonus:'points'}, particles:{scale:3} },
-        { name:'One-Shot Hero', gravity:1100, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:780, ballRadius:9, balls:1,
+        { name:'One-Shot Hero', desc:'One ball only; larger bucket and 3-bounce guide—make it count.', gravity:1100, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:780, ballRadius:9, balls:1,
           bucket:{w:160,h:26,speed:200}, grid:{cols:12,rows:7,spacing:62,r:12,startY:150,targetRatio:0.22}, guide:{bounces:3, ms:2000, density:4},
           scoring:{normal:100,target:300,streakStep:0.12,catchBonus:'ball'}, particles:{scale:1} },
-        { name:'Kids Party', gravity:900, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:780, ballRadius:9, balls:12,
+        { name:'Kids Party', desc:'Lots of balls, big bucket, more targets; confetti galore.', gravity:900, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:780, ballRadius:9, balls:12,
           bucket:{w:180,h:26,speed:180}, grid:{cols:12,rows:7,spacing:62,r:12,startY:150,targetRatio:0.30}, guide:{bounces:3, ms:2000, density:4},
           scoring:{normal:50,target:150,streakStep:0.12,catchBonus:'ball'}, particles:{scale:2}, fun:{confetti:true} },
-        { name:'Hardcore Purist', gravity:1300, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:780, ballRadius:9, balls:3,
+        { name:'Hardcore Purist', desc:'Tough mode: high gravity, small bucket, 0-bounce guide.', gravity:1300, restitution:{ball:0.96,peg:0.94,wall:0.90}, launchSpeed:780, ballRadius:9, balls:3,
           bucket:{w:110,h:18,speed:260}, grid:{cols:12,rows:7,spacing:62,r:12,startY:150,targetRatio:0.25}, guide:{bounces:0, ms:2000, density:4},
           scoring:{normal:50,target:150,streakStep:0.12,catchBonus:'ball'}, particles:{scale:1} },
       ];
@@ -674,7 +674,22 @@
         opts.colorBlind = val;
         Array.from(segColorBlind.children).forEach(ch => ch.classList.toggle('active', ch === b));
       });
-      presets.forEach((p,i)=>{ const o=document.createElement('option'); o.value=String(i); o.textContent=p.name; selPreset.appendChild(o); });
+      // add options with hover descriptions
+      // add a title for the Custom entry
+      selPreset.querySelector('option[value=""]').title = 'Custom settings (not a saved preset)';
+      presets.forEach((p,i)=>{
+        const o = document.createElement('option');
+        o.value = String(i);
+        o.textContent = p.name;
+        if (p.desc) o.title = p.desc;
+        selPreset.appendChild(o);
+      });
+      // keep the select's title in sync with the current choice for better hover UX
+      function syncPresetTitle() {
+        const opt = selPreset.options[selPreset.selectedIndex];
+        selPreset.title = opt && opt.title ? opt.title : '';
+      }
+      syncPresetTitle();
       function applyPreset(p){
         opts.gravity = p.gravity;
         opts.restitution = { ...p.restitution };
@@ -692,6 +707,7 @@
       selPreset.addEventListener('change', () => {
         const idx = parseInt(selPreset.value,10);
         if (!isNaN(idx)) applyPreset(presets[idx]);
+        syncPresetTitle();
       });
 
       function shoot() {
