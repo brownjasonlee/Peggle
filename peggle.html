@@ -628,6 +628,7 @@
       });
       slBucketSpeed.addEventListener('input', () => {
         opts.bucket.speed = Number(slBucketSpeed.value);
+        bucket.speed = opts.bucket.speed; // reflect live in-game
         lblBucketSpeed.textContent = slBucketSpeed.value;
       });
       numBucketW.addEventListener('input', () => {
@@ -648,12 +649,18 @@
       });
       slGuideFadeStart.addEventListener('input', () => { opts.guide.fadeStart = Number(slGuideFadeStart.value); });
       slGuideFadeEnd.addEventListener('input', () => { opts.guide.fadeEnd = Number(slGuideFadeEnd.value); });
-      numCols.addEventListener('input', () => { opts.level.cols = Number(numCols.value); });
-      numRows.addEventListener('input', () => { opts.level.rows = Number(numRows.value); });
-      numSpacing.addEventListener('input', () => { opts.level.spacing = Number(numSpacing.value); });
-      numPegR.addEventListener('input', () => { opts.level.pegRadius = Number(numPegR.value); });
-      numStartY.addEventListener('input', () => { opts.level.startY = Number(numStartY.value); });
-      slTargetRatio.addEventListener('input', () => { opts.level.targetRatio = Number(slTargetRatio.value); lblTargetRatio.textContent = `${Math.round(opts.level.targetRatio*100)}%`; });
+      // Debounced level regeneration for generation-affecting settings
+      let resetTimer = null;
+      function scheduleLevelReset() {
+        if (resetTimer) clearTimeout(resetTimer);
+        resetTimer = setTimeout(() => { resetLevel(opts.level.seed); }, 300);
+      }
+      numCols.addEventListener('input', () => { opts.level.cols = Number(numCols.value); scheduleLevelReset(); });
+      numRows.addEventListener('input', () => { opts.level.rows = Number(numRows.value); scheduleLevelReset(); });
+      numSpacing.addEventListener('input', () => { opts.level.spacing = Number(numSpacing.value); scheduleLevelReset(); });
+      numPegR.addEventListener('input', () => { opts.level.pegRadius = Number(numPegR.value); scheduleLevelReset(); });
+      numStartY.addEventListener('input', () => { opts.level.startY = Number(numStartY.value); scheduleLevelReset(); });
+      slTargetRatio.addEventListener('input', () => { opts.level.targetRatio = Number(slTargetRatio.value); lblTargetRatio.textContent = `${Math.round(opts.level.targetRatio*100)}%`; scheduleLevelReset(); });
       btnSeed.addEventListener('click', () => { const val = parseInt(txtSeed.value, 16); if (!Number.isNaN(val)) resetLevel(val >>> 0); });
       txtSeed.addEventListener('keydown', (e) => { if (e.key === 'Enter') { const v = parseInt(txtSeed.value, 16); if (!Number.isNaN(v)) resetLevel(v >>> 0); }});
       slScoreNormal.addEventListener('input', () => { opts.scoring.normal = Number(slScoreNormal.value); lblScoreNormal.textContent = slScoreNormal.value; });
