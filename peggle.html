@@ -25,7 +25,8 @@
         font-weight: 600; letter-spacing: 0.2px; font-size: 14px;
         font-variant-numeric: tabular-nums; font-feature-settings: 'tnum';
       }
-      .hud .pill { padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,0.06); }
+      .hud .pill { padding: 4px 12px; border-radius: 999px; background: rgba(255,255,255,0.06); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+      .hud .lbl { font-weight: 800; opacity: 0.95; }
       .hud .accent { color: #8ec7ff; display: inline-block; text-align: right; }
       .pill.score .accent { width: 8ch; }
       .pill.balls .accent { width: 2ch; }
@@ -35,6 +36,18 @@
       .btn { cursor: pointer; padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.08); color: #e8eefc; font-weight: 700; letter-spacing: 0.2px; }
       .btn:hover { background: rgba(255,255,255,0.14); }
       .btn:active { transform: translateY(1px); }
+      .options {
+        position: fixed; top: 64px; right: 16px; padding: 14px 16px; border-radius: 12px;
+        background: rgba(10,16,30,0.6); border: 1px solid rgba(255,255,255,0.1);
+        box-shadow: 0 12px 36px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
+        backdrop-filter: blur(8px); color: #e8eefc; font-size: 14px;
+      }
+      .options h3 { margin: 0 0 8px; font-size: 14px; font-weight: 800; letter-spacing: 0.3px; opacity: 0.9; }
+      .opt-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+      .opt-label { opacity: 0.85; min-width: 120px; }
+      .seg { display: inline-flex; gap: 6px; }
+      .seg button { cursor: pointer; padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.06); color: #e8eefc; }
+      .seg button.active { background: rgba(166,209,255,0.18); border-color: rgba(166,209,255,0.5); }
       /* overlay removed */
       .footer { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); font-size: 12px; opacity: 0.6; }
       a { color: #a6d1ff; text-decoration: none; border-bottom: 1px dotted rgba(166,209,255,0.5); }
@@ -43,14 +56,27 @@
   <body>
     <div id="wrap"><canvas id="game"></canvas></div>
     <div class="hud" id="hud">
-      <div class="pill score">Score: <span id="score" class="accent">0</span></div>
-      <div class="pill balls">Balls: <span id="balls" class="accent">5</span></div>
-      <div class="pill targets">Targets: <span id="targets" class="accent">0</span></div>
-      <div class="pill streak">Streak: <span id="streak" class="accent">0</span></div>
+      <div class="pill score"><span class="lbl">Score</span><span id="score" class="accent">0</span></div>
+      <div class="pill balls"><span class="lbl">Balls</span><span id="balls" class="accent">5</span></div>
+      <div class="pill targets"><span class="lbl">Targets</span><span id="targets" class="accent">0</span></div>
+      <div class="pill streak"><span class="lbl">Streak</span><span id="streak" class="accent">0</span></div>
       <div class="controls">
         <button class="btn" id="btnRestart" title="Restart with a new layout">Restart</button>
         <button class="btn" id="btnGuide" title="Toggle aiming guide">Guide: On</button>
+        <button class="btn" id="btnOptions" title="Toggle options">Options</button>
       </div>
+    </div>
+    <div class="options" id="optionsPanel" hidden>
+      <h3>Options</h3>
+      <div class="opt-row">
+        <div class="opt-label">Guide bounces</div>
+        <div class="seg" id="segBounces">
+          <button data-v="1" class="active">1</button>
+          <button data-v="2">2</button>
+          <button data-v="3">3</button>
+        </div>
+      </div>
+      <div class="opt-row" style="opacity:.7">More settings coming next…</div>
     </div>
     <div class="footer">Single-file build • Fixed-step physics • No network</div>
     <script>
@@ -123,6 +149,7 @@
       let streak = 0;
       let targetsLeft = 0;
       let showGuide = true;
+      const opts = { guideBounces: 1 };
       let state = 'aim'; // 'aim' | 'fly' | 'win' | 'lose'
       let accumulator = 0; let lastT = performance.now();
 
@@ -133,6 +160,9 @@
       const hudStreak = document.getElementById('streak');
       const btnRestart = document.getElementById('btnRestart');
       const btnGuide = document.getElementById('btnGuide');
+      const btnOptions = document.getElementById('btnOptions');
+      const optionsPanel = document.getElementById('optionsPanel');
+      const segBounces = document.getElementById('segBounces');
       
 
       function resetLevel(seed = 0x1234cafe) {
@@ -191,6 +221,12 @@
       });
       btnRestart.addEventListener('click', () => { resetLevel((Math.random()*0xffffffff)>>>0); });
       btnGuide.addEventListener('click', () => { showGuide = !showGuide; setGuideButton(); });
+      btnOptions.addEventListener('click', () => { optionsPanel.hidden = !optionsPanel.hidden; });
+      segBounces.addEventListener('click', (e) => {
+        const b = e.target.closest('button'); if (!b) return;
+        opts.guideBounces = parseInt(b.dataset.v, 10);
+        Array.from(segBounces.children).forEach(ch => ch.classList.toggle('active', ch === b));
+      });
 
       function shoot() {
         if (state !== 'aim' || ballsLeft <= 0) return;
@@ -304,37 +340,60 @@
         }
       }
 
-      // -------- Guide Prediction (single bounce stop) --------
+      // -------- Guide Prediction (replicates fixed-step + substeps) --------
       function computeGuide() {
         if (!showGuide || state !== 'aim') return null;
         const start = ball.pos.clone();
         const dir = Math.atan2(pointer.y - start.y, pointer.x - start.x);
+        const pos = start.clone();
         const vel = new Vec2(Math.cos(dir)*LAUNCH_SPEED, Math.sin(dir)*LAUNCH_SPEED);
-        const maxT = 1800; // ms, longer reach preview
-        let t = 0;
-        let last = start.clone();
-        let hitPt = null;
-        const pts = [last.clone()];
-        const step = 1000/240;
-        while (t < maxT) {
-          vel.y += GRAVITY * (step/1000);
-          vel.x *= 0.999; vel.y *= 0.999;
-          const nx = last.x + vel.x * step/1000;
-          const ny = last.y + vel.y * step/1000;
-          // walls preview
-          if (nx < BALL_R || nx > world.w - BALL_R) { break; }
-          if (ny < BALL_R) { break; }
-          // peg preview
-          for (let i=0;i<pegs.length;i++) {
-            const p = pegs[i]; if (p.hit) continue;
-            const col = circleCollide(nx, ny, BALL_R, p.x, p.y, p.r);
-            if (col) { hitPt = { x: nx, y: ny }; break; }
+        const maxMs = 2000;
+        let elapsed = 0;
+        const pts = [pos.clone()];
+        let bounces = 0;
+        let finalHit = null;
+        // Simulate using the same integration and collision order as runtime
+        while (elapsed < maxMs && bounces < opts.guideBounces) {
+          const speed = vel.len();
+          const sub = Math.min(4, 1 + ((speed > 800) ? 2 : 0));
+          const sdt = DT / sub; // ms
+          for (let k=0; k<sub; k++) {
+            // integrate
+            vel.y += GRAVITY * (sdt/1000);
+            vel.x *= 0.999; vel.y *= 0.999;
+            pos.x += vel.x * sdt/1000;
+            pos.y += vel.y * sdt/1000;
+
+            // walls
+            if (pos.x < BALL_R) { pos.x = BALL_R; vel.x = Math.abs(vel.x)*WALL_REST; }
+            if (pos.x > world.w-BALL_R) { pos.x = world.w-BALL_R; vel.x = -Math.abs(vel.x)*WALL_REST; }
+            if (pos.y < BALL_R) { pos.y = BALL_R; vel.y = Math.abs(vel.y)*WALL_REST; }
+
+            // pegs
+            let collided = false;
+            for (let i=pegs.length-1;i>=0;i--) {
+              const p = pegs[i]; if (p.hit) continue;
+              const col = circleCollide(pos.x, pos.y, BALL_R, p.x, p.y, p.r);
+              if (!col) continue;
+              // resolve like runtime
+              pos.x += col.nx * col.pen;
+              pos.y += col.ny * col.pen;
+              const rv = reflectVelocity(vel.x, vel.y, col.nx, col.ny, (BALL_REST+PEG_REST)*0.5);
+              vel.set(rv[0], rv[1]);
+              bounces++;
+              finalHit = { x: pos.x, y: pos.y };
+              collided = true;
+              break;
+            }
+
+            pts.push(pos.clone());
+            if (bounces >= opts.guideBounces) break;
+            if (pos.y > world.h + BALL_R + 40) break;
           }
-          if (hitPt) break;
-          last.set(nx, ny); pts.push(last.clone());
-          t += step;
+          elapsed += DT;
+          if (pos.y > world.h + BALL_R + 40) break;
         }
-        return { pts, hit: hitPt };
+        return { pts, hit: finalHit };
       }
 
       // -------- Render --------
@@ -398,15 +457,23 @@
       }
 
       function drawGuide() {
-        const guide = computeGuide(); if (!guide) return;
-        ctx.lineWidth = 2; ctx.setLineDash([6,6]); ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-        ctx.beginPath();
-        ctx.moveTo(guide.pts[0].x, guide.pts[0].y);
-        for (let i=1;i<guide.pts.length;i++) ctx.lineTo(guide.pts[i].x, guide.pts[i].y);
-        ctx.stroke(); ctx.setLineDash([]);
-        if (guide.hit) {
-          ctx.beginPath(); ctx.arc(guide.hit.x, guide.hit.y, 6, 0, TAU);
-          ctx.strokeStyle = 'rgba(255,180,120,0.8)'; ctx.lineWidth = 2; ctx.stroke();
+        const g = computeGuide(); if (!g) return;
+        const n = g.pts.length; if (n < 2) return;
+        // Draw breadcrumb dots with fade towards the end
+        const startA = 0.6, endA = 0.12;
+        const step = Math.max(1, Math.floor(n/64));
+        for (let i=0;i<n; i+=step) {
+          const p = g.pts[i];
+          const t = i/(n-1);
+          const a = lerp(startA, endA, t*t);
+          ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, TAU);
+          ctx.fillStyle = `rgba(230,240,255,${a.toFixed(3)})`;
+          ctx.fill();
+        }
+        // Subtle mark on final hit
+        if (g.hit) {
+          ctx.beginPath(); ctx.arc(g.hit.x, g.hit.y, 6, 0, TAU);
+          ctx.strokeStyle = 'rgba(255,200,150,0.18)'; ctx.lineWidth = 2; ctx.stroke();
         }
       }
 
