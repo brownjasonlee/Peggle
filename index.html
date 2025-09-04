@@ -355,6 +355,7 @@
         multiShot: false,
         spinFactor: 0.08, // spin per tangential speed / radius
         spinDrag: 0.998,  // angular damping per substep
+        spinBounce: 0.02, // how much spin steers bounce along tangent
       };
       let DT = 1000 / opts.timeStep; // ms per physics step
       let BALL_R = opts.ballRadius;
@@ -835,7 +836,7 @@
           trail: []
         };
         balls.push(b);
-        ballsLeft--; updateHUD();
+        updateHUD();
       }
 
       function shoot() {
@@ -880,6 +881,68 @@
       function circleCollide(x,y,r, px,py,pr) { // returns normal & penetration
         const dx = x-px, dy = y-py; const d2 = dx*dx + dy*dy; const rr = (r+pr)*(r+pr);
         if (d2 >= rr) return null; const d = Math.sqrt(d2)||1; const nx = dx/d, ny = dy/d; const pen = (r+pr)-d; return { nx, ny, pen };
+      }
+
+      // ---- Shape helpers for polygon collisions ----
+      function rot(x, y, a) {
+        const c = Math.cos(a), s = Math.sin(a);
+        return { x: x*c - y*s, y: x*s + y*c };
+      }
+      function getBallPoly(b) {
+        const r = b.r, a = b.angle || 0;
+        if (opts.ballShape === 'square') {
+          const v = [ {x:-r,y:-r}, {x:r,y:-r}, {x:r,y:r}, {x:-r,y:r} ].map(p=>rot(p.x,p.y,a));
+          v.forEach(p=>{ p.x+=b.pos.x; p.y+=b.pos.y; });
+          return v;
+        }
+        if (opts.ballShape === 'triangle') {
+          const h = r*Math.sqrt(3);
+          const v = [ {x:0,y:-r}, {x:-h*0.5,y:r*0.5}, {x:h*0.5,y:r*0.5} ].map(p=>rot(p.x,p.y,a));
+          v.forEach(p=>{ p.x+=b.pos.x; p.y+=b.pos.y; });
+          return v;
+        }
+        return null; // circle
+      }
+      function getPegPoly(p) {
+        const r = p.r;
+        if (opts.pegShape === 'square') {
+          return [ {x:p.x-r,y:p.y-r}, {x:p.x+r,y:p.y-r}, {x:p.x+r,y:p.y+r}, {x:p.x-r,y:p.y+r} ];
+        }
+        if (opts.pegShape === 'triangle') {
+          const h = r*Math.sqrt(3);
+          return [ {x:p.x, y:p.y-r}, {x:p.x-h*0.5, y:p.y+r*0.5}, {x:p.x+h*0.5, y:p.y+r*0.5} ];
+        }
+        return null; // circle
+      }
+      function polyCentroid(poly){ let x=0,y=0; for (let i=0;i<poly.length;i++){ x+=poly[i].x; y+=poly[i].y; } const n=poly.length||1; return {x:x/n,y:y/n}; }
+      function closestPointOnSegment(px,py, ax,ay, bx,by){ const abx=bx-ax, aby=by-ay; const t = ((px-ax)*abx + (py-ay)*aby) / (abx*abx + aby*aby || 1); const tt = clamp(t,0,1); return { x: ax + abx*tt, y: ay + aby*tt } }
+      function closestPointOnPoly(px,py, poly){ let best=null, bestD2=Infinity; for (let i=0;i<poly.length;i++){ const a=poly[i], b=poly[(i+1)%poly.length]; const q=closestPointOnSegment(px,py,a.x,a.y,b.x,b.y); const dx=px-q.x, dy=py-q.y; const d2=dx*dx+dy*dy; if (d2<bestD2){ bestD2=d2; best=q; } } return best; }
+      function collideCirclePoly(cx,cy,cr, poly){ const q=closestPointOnPoly(cx,cy,poly); const dx=cx-q.x, dy=cy-q.y; const d=Math.hypot(dx,dy); if (d>=cr) return null; const pen=cr-d; const nx = (d>1e-6)? dx/d : 1; const ny = (d>1e-6)? dy/d : 0; return { nx, ny, pen } }
+      function projectPoly(poly, ax, ay){ let min=Infinity, max=-Infinity; for (let i=0;i<poly.length;i++){ const p=poly[i]; const v=p.x*ax + p.y*ay; if (v<min) min=v; if (v>max) max=v; } return {min,max}; }
+      function collidePolyPoly(A,B){
+        let minOverlap=Infinity, bestAx=0, bestAy=0;
+        const axes=[];
+        function addAxes(poly){ for (let i=0;i<poly.length;i++){ const a=poly[i], b=poly[(i+1)%poly.length]; let nx=-(b.y-a.y), ny=(b.x-a.x); const l=Math.hypot(nx,ny)||1; nx/=l; ny/=l; axes.push({x:nx,y:ny}); } }
+        addAxes(A); addAxes(B);
+        for (let i=0;i<axes.length;i++){
+          const ax=axes[i].x, ay=axes[i].y;
+          const pA=projectPoly(A,ax,ay), pB=projectPoly(B,ax,ay);
+          if (pA.max < pB.min || pB.max < pA.min) return null; // separating axis
+          const overlap = Math.min(pA.max - pB.min, pB.max - pA.min);
+          if (overlap < minOverlap){ minOverlap=overlap; bestAx=ax; bestAy=ay; }
+        }
+        // ensure normal pushes A away from B
+        const cA=polyCentroid(A), cB=polyCentroid(B);
+        const dirx=cA.x-cB.x, diry=cA.y-cB.y; if (dirx*bestAx + diry*bestAy < 0){ bestAx=-bestAx; bestAy=-bestAy; }
+        return { nx:bestAx, ny:bestAy, pen:minOverlap };
+      }
+      function collideBallPeg(ball, p){
+        const bPoly = getBallPoly(ball);
+        const pPoly = getPegPoly(p);
+        if (!bPoly && !pPoly) return circleCollide(ball.pos.x, ball.pos.y, ball.r, p.x, p.y, p.r);
+        if (!bPoly && pPoly) return collideCirclePoly(ball.pos.x, ball.pos.y, ball.r, pPoly);
+        if (bPoly && !pPoly) { const col = collideCirclePoly(p.x, p.y, p.r, bPoly); if (!col) return null; return { nx: -col.nx, ny: -col.ny, pen: col.pen }; }
+        return collidePolyPoly(bPoly, pPoly);
       }
 
       function stepBucket(dt) {
@@ -943,7 +1006,7 @@
             // pegs
             for (let i=pegs.length-1;i>=0;i--) {
               const p = pegs[i]; if (p.hit) continue;
-              const col = circleCollide(ball.pos.x, ball.pos.y, ball.r, p.x, p.y, p.r);
+              const col = collideBallPeg(ball, p);
               if (!col) continue;
               // resolve position
               ball.pos.x += col.nx * col.pen;
@@ -956,6 +1019,10 @@
               const sgn = (col.nx*ball.vel.y - col.ny*ball.vel.x) >= 0 ? 1 : -1;
               ball.spin += sgn * opts.spinFactor * (tmag/Math.max(1, ball.r));
               ball.spin = clamp(ball.spin, -30, 30);
+              // couple spin to tangential impulse on bounce
+              const tnx = -col.ny, tny = col.nx;
+              rx += tnx * ball.spin * (opts.spinBounce || 0.02);
+              ry += tny * ball.spin * (opts.spinBounce || 0.02);
               ball.vel.set(rx, ry);
               // scoring & effects
               p.hit = true; p.glow = 1;
@@ -970,7 +1037,7 @@
           // floor (miss)
           if (ball.pos.y > world.h + ball.r) {
             // lose the ball
-            balls.splice(bi,1); streak=0;
+            balls.splice(bi,1); streak=0; ballsLeft--; updateHUD();
           }
         }
 
@@ -993,6 +1060,7 @@
         const dir = Math.atan2(pointer.y - start.y, pointer.x - start.x);
         const pos = start.clone();
         const vel = new Vec2(Math.cos(dir)*opts.launchSpeed, Math.sin(dir)*opts.launchSpeed);
+        let angle = 0; // guide ignores spin dynamics
         const maxMs = opts.guide.ms;
         let elapsed = 0;
         const pts = [pos.clone()];
@@ -1025,7 +1093,21 @@
             // pegs
             for (let i=pegs.length-1;i>=0;i--) {
               const p = pegs[i]; if (p.hit) continue;
-              const col = circleCollide(pos.x, pos.y, BALL_R, p.x, p.y, p.r);
+              // build a temporary ball-like object for collision checks
+              const tmpB = { pos: {x:pos.x, y:pos.y}, r: BALL_R, angle };
+              const col = (function(){
+                const bPoly = (opts.ballShape==='circle') ? null : (function(){
+                  if (opts.ballShape==='square') {
+                    const r = BALL_R; const verts=[{x:-r,y:-r},{x:r,y:-r},{x:r,y:r},{x:-r,y:r}].map(v=>rot(v.x,v.y,angle));
+                    verts.forEach(v=>{ v.x+=pos.x; v.y+=pos.y; }); return verts;
+                  } else { const r=BALL_R, h=r*Math.sqrt(3); const verts=[{x:0,y:-r},{x:-h*0.5,y:r*0.5},{x:h*0.5,y:r*0.5}].map(v=>rot(v.x,v.y,angle)); verts.forEach(v=>{ v.x+=pos.x; v.y+=pos.y; }); return verts; }
+                })();
+                const pPoly = getPegPoly(p);
+                if (!bPoly && !pPoly) return circleCollide(pos.x,pos.y,BALL_R,p.x,p.y,p.r);
+                if (!bPoly && pPoly) return collideCirclePoly(pos.x,pos.y,BALL_R,pPoly);
+                if (bPoly && !pPoly) { const c=collideCirclePoly(p.x,p.y,p.r,bPoly); if (!c) return null; return { nx:-c.nx, ny:-c.ny, pen:c.pen }; }
+                return collidePolyPoly(bPoly,pPoly);
+              })();
               if (!col) continue;
               // resolve like runtime
               pos.x += col.nx * col.pen;
