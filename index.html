@@ -126,6 +126,21 @@
         <span id="lblDrag">0.999</span>
       </div>
       <div class="opt-row">
+        <div class="opt-label">Spin factor</div>
+        <input id="slSpinFactor" type="range" min="0" max="0.20" step="0.005" value="0.08" />
+        <span id="lblSpinFactor">0.08</span>
+      </div>
+      <div class="opt-row">
+        <div class="opt-label">Spin drag</div>
+        <input id="slSpinDrag" type="range" min="0.95" max="1.00" step="0.0005" value="0.998" />
+        <span id="lblSpinDrag">0.998</span>
+      </div>
+      <div class="opt-row">
+        <div class="opt-label">Spin bounce</div>
+        <input id="slSpinBounce" type="range" min="0" max="0.10" step="0.002" value="0.02" />
+        <span id="lblSpinBounce">0.02</span>
+      </div>
+      <div class="opt-row">
         <div class="opt-label">Time step</div>
         <select id="selHz">
           <option value="60">60 Hz</option>
@@ -329,6 +344,7 @@
       const rng = new RNG(0x1234cafe);
       const pegs = []; // {x,y,r,type:'normal'|'target', hit:boolean, glow:number}
       const particles = []; // pooled
+      const rings = []; // transient shockwave rings
       // active balls
       const balls = []; // { pos:Vec2, vel:Vec2, r:number, alive:boolean, angle:number, spin:number, trail:Array<{x:number,y:number}> }
       const spawnPos = new Vec2(world.w*0.5, 80);
@@ -436,6 +452,12 @@
       const slRestWall = document.getElementById('slRestWall');
       const slDrag = document.getElementById('slDrag');
       const lblDrag = document.getElementById('lblDrag');
+      const slSpinFactor = document.getElementById('slSpinFactor');
+      const lblSpinFactor = document.getElementById('lblSpinFactor');
+      const slSpinDrag = document.getElementById('slSpinDrag');
+      const lblSpinDrag = document.getElementById('lblSpinDrag');
+      const slSpinBounce = document.getElementById('slSpinBounce');
+      const lblSpinBounce = document.getElementById('lblSpinBounce');
       const selHz = document.getElementById('selHz');
       const slLaunch = document.getElementById('slLaunch');
       const lblLaunch = document.getElementById('lblLaunch');
@@ -505,6 +527,9 @@
       slLaunch.title = 'Initial speed when firing the ball';
       slBallR.title = 'Ball radius in pixels';
       slBalls.title = 'Number of balls for the current game';
+      slSpinFactor.title = 'How much tangential impact generates spin';
+      slSpinDrag.title = 'Angular damping applied to spin each step';
+      slSpinBounce.title = 'How much existing spin steers bounce along tangent';
       segBallShape.title = 'Ball render shape';
       segPegShape.title = 'Peg render shape';
       segMultiShot.title = 'Allow launching while balls are still in play';
@@ -589,6 +614,12 @@
         slTrail.value = String(opts.trailLength);
         lblTrail.textContent = String(opts.trailLength);
         selDpr.value = String(opts.dprCap);
+        slSpinFactor.value = String(opts.spinFactor.toFixed(3));
+        lblSpinFactor.textContent = opts.spinFactor.toFixed(3);
+        slSpinDrag.value = String(opts.spinDrag.toFixed(3));
+        lblSpinDrag.textContent = opts.spinDrag.toFixed(3);
+        slSpinBounce.value = String(opts.spinBounce.toFixed(3));
+        lblSpinBounce.textContent = opts.spinBounce.toFixed(3);
         Array.from(segGuideOn.children).forEach(ch => ch.classList.toggle('active', (ch.dataset.on==='1') === opts.guide.on));
         Array.from(segBounces.children).forEach(ch => ch.classList.toggle('active', parseInt(ch.dataset.v,10) === opts.guide.bounces));
         segBounces.classList.toggle('disabled', !opts.guide.on);
@@ -702,6 +733,9 @@
         opts.timeStep = Number(selHz.value);
         DT = 1000 / opts.timeStep;
       });
+      slSpinFactor.addEventListener('input', () => { opts.spinFactor = Number(slSpinFactor.value); lblSpinFactor.textContent = Number(opts.spinFactor).toFixed(3); });
+      slSpinDrag.addEventListener('input', () => { opts.spinDrag = Number(slSpinDrag.value); lblSpinDrag.textContent = Number(opts.spinDrag).toFixed(3); });
+      slSpinBounce.addEventListener('input', () => { opts.spinBounce = Number(slSpinBounce.value); lblSpinBounce.textContent = Number(opts.spinBounce).toFixed(3); });
       slLaunch.addEventListener('input', () => {
         opts.launchSpeed = Number(slLaunch.value);
         lblLaunch.textContent = slLaunch.value;
@@ -857,7 +891,21 @@
         for (let i=0;i<count;i++) {
           const a = rng.range(0, TAU);
           const sp = rng.range(opts.particles.speedMin, opts.particles.speedMax);
-          particles.push({ x, y, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp, life: rng.range(opts.particles.lifeMin, opts.particles.lifeMax), age: 0, c: color });
+          particles.push({ x, y, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp, life: rng.range(opts.particles.lifeMin, opts.particles.lifeMax), age: 0, c: color, sz: 2, grow: 2 });
+        }
+      }
+
+      function emitExplosion(x, y) {
+        // Shockwave ring
+        rings.push({ x, y, age: 0, life: 420, r0: 4, r1: 64, a0: 0.35, a1: 0.0, w: 3 });
+        // Hot core burst
+        const n = Math.round(60 * (opts.particles.density+0.5));
+        for (let i=0;i<n;i++) {
+          const a = rng.range(0, TAU);
+          const sp = rng.range(160, 420);
+          const life = rng.range(300, 700);
+          const col = (i%3===0) ? '#fff1b5' : (i%3===1 ? '#ffcf6e' : '#ff9f6e');
+          particles.push({ x, y, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp, life, age: 0, c: col, sz: rng.range(3,6), grow: rng.range(2,8) });
         }
       }
 
@@ -867,6 +915,10 @@
           p.age += dt; if (p.age >= p.life) { particles.splice(i,1); continue; }
           p.vx *= 0.992; p.vy = p.vy*0.992 + opts.gravity * opts.particles.gravity * (dt/1000);
           p.x += p.vx * dt/1000; p.y += p.vy * dt/1000;
+        }
+        // update rings
+        for (let i=rings.length-1;i>=0;i--) {
+          const r = rings[i]; r.age += dt; if (r.age >= r.life) { rings.splice(i,1); continue; }
         }
       }
 
@@ -1030,6 +1082,7 @@
               score += Math.round(base * (1 + streak*opts.scoring.streakStep));
               streak += 1; updateHUD();
               emitHit(p.x, p.y, p.type==='target' ? '#ff9f6e' : '#66ccff');
+              if (p.type==='target') emitExplosion(p.x, p.y);
               if (p.type==='target') { targetsLeft--; updateHUD(); }
             }
           }
@@ -1282,8 +1335,21 @@
         // particles behind ball
         particles.forEach(p => {
           const t = p.age / p.life; const a = (1 - t) * 0.7;
-          ctx.beginPath(); ctx.arc(p.x, p.y, 2 + 2*(1-t), 0, TAU);
+          const base = p.sz != null ? p.sz : 2;
+          const grow = p.grow != null ? p.grow : 2;
+          const rad = base + grow * (1 - t);
+          ctx.beginPath(); ctx.arc(p.x, p.y, rad, 0, TAU);
           ctx.globalAlpha = a; ctx.fillStyle = p.c; ctx.fill(); ctx.globalAlpha = 1;
+        });
+        // shockwave rings
+        rings.forEach(r => {
+          const t = r.age / r.life;
+          const rr = lerp(r.r0, r.r1, t);
+          const a = lerp(r.a0, r.a1, t);
+          ctx.beginPath(); ctx.arc(0 + r.x, 0 + r.y, rr, 0, TAU);
+          ctx.strokeStyle = `rgba(255,220,120,${a.toFixed(3)})`;
+          ctx.lineWidth = r.w;
+          ctx.stroke();
         });
         // bucket
         drawBucket();
